@@ -1,0 +1,24 @@
+name: CI Day 1 - Basics
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  basic-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Print system info
+        run: |
+          echo "GitHub Actions is running"
+          echo "User: $(whoami)"
+          echo "OS Info:"
+          uname -a
+
+      - name: Success message
+        run: echo "✅ CI Day 1 completed successfully, chatgpt ki maka bhosda"
