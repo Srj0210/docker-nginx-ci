@@ -1,0 +1,26 @@
+name: public-dispatch-probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: attempt private-target repository dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          response=$(mktemp)
+          status=$(curl -sS -L -o "$response" -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'Content-Type: application/json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            -d '{"event_type":"public-token-canary","client_payload":{"marker":"PUBLIC_SOURCE_TOKEN"}}' \
+            'https://api.github.com/repos/Srj0210/bbtest-priv-1782669390/dispatches')
+          bytes=$(wc -c < "$response" | tr -d ' ')
+          digest=$(sha256sum "$response" | awk '{print $1}')
+          printf 'PUBLIC_SOURCE_DISPATCH_STATUS=%s BYTES=%s SHA256=%s\n' "$status" "$bytes" "$digest"
+          rm -f "$response"
