@@ -1,8 +1,0 @@
-name: public-reusable-caller-1794120906
-on:
-  workflow_dispatch:
-permissions:
-  contents: read
-jobs:
-  call_private_workflow:
-    uses: Srj0210/bbtest-priv-1782669390/.github/workflows/private-reusable-1794120906.yml@main
