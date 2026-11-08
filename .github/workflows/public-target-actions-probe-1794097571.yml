@@ -1,0 +1,43 @@
+name: public-target-actions-probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: query private target actions metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          meta=$(mktemp)
+          meta_status=$(curl -sS -L -o "$meta" -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/Srj0210/bbtest-priv-1782669390/actions/artifacts?per_page=100')
+          meta_bytes=$(wc -c < "$meta" | tr -d ' ')
+          meta_digest=$(sha256sum "$meta" | awk '{print $1}')
+          artifact_id=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(next((a.get("id","") for a in d.get("artifacts",[]) if a.get("name") == "private-target-synthetic-artifact-20261108" and not a.get("expired")), ""))' "$meta")
+          found=0
+          zip_status=NA
+          zip_bytes=NA
+          zip_digest=NA
+          marker=0
+          if [ -n "$artifact_id" ]; then
+            found=1
+            zip=$(mktemp)
+            zip_status=$(curl -sS -L -o "$zip" -w '%{http_code}' \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/Srj0210/bbtest-priv-1782669390/actions/artifacts/$artifact_id/zip")
+            zip_bytes=$(wc -c < "$zip" | tr -d ' ')
+            zip_digest=$(sha256sum "$zip" | awk '{print $1}')
+            if unzip -p "$zip" 2>/dev/null | grep -Fq 'PRIVATE_ACTIONS_ARTIFACT_MARKER_20261108_SYNTHETIC_ONLY'; then marker=1; fi
+            rm -f "$zip"
+          fi
+          printf 'PUBLIC_SOURCE_ACTIONS_META_STATUS=%s META_BYTES=%s META_SHA256=%s ARTIFACT_ID_FOUND=%s ARTIFACT_ZIP_STATUS=%s ARTIFACT_ZIP_BYTES=%s ARTIFACT_ZIP_SHA256=%s MARKER_MATCH=%s\n' "$meta_status" "$meta_bytes" "$meta_digest" "$found" "$zip_status" "$zip_bytes" "$zip_digest" "$marker"
+          rm -f "$meta"
